@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useRef, useCallback, useContext, createContext, useEffect } from "react";
 
-// ─── Shopify API Config ───────────────────────────────────────────────────────
-// ✏️  PASTE YOUR VALUES HERE:
-const SHOPIFY_STORE   = "saharadelights.myshopify.com";  // e.g. sahara-delights.myshopify.com
-const SHOPIFY_TOKEN   = "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"; // your Admin API access token
+// ─── Shopify Config ───────────────────────────────────────────────────────────
+// Token and store are set as Vercel environment variables — not stored here.
+// See: Vercel Dashboard → Your Project → Settings → Environment Variables
+// Add: SHOPIFY_STORE = your-store.myshopify.com
+//      SHOPIFY_TOKEN = shpat_xxxxxxxxxxxx
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Product Catalog ──────────────────────────────────────────────────────────
@@ -2312,25 +2313,16 @@ function WeightsTab({ weights, setWeights }) {
 }
 
 // ─── Shopify Order Fetcher ────────────────────────────────────────────────────
+// Calls the Vercel serverless proxy at /api/shopify-orders
+// (which securely forwards to Shopify with your token server-side)
 async function fetchShopifyOrders() {
-  const allOrders = [];
-  let url = `https://${SHOPIFY_STORE}/admin/api/2024-01/orders.json?status=open&financial_status=paid&limit=250`;
-  while (url) {
-    const res = await fetch(url, {
-      headers: {
-        "X-Shopify-Access-Token": SHOPIFY_TOKEN,
-        "Content-Type": "application/json",
-      },
-    });
-    if (!res.ok) throw new Error(`Shopify API error: ${res.status} ${res.statusText}`);
-    const data = await res.json();
-    allOrders.push(...data.orders);
-    // pagination via Link header
-    const link = res.headers.get("Link") || "";
-    const next = link.match(/<([^>]+)>;\s*rel="next"/);
-    url = next ? next[1] : null;
+  const res = await fetch("/api/shopify-orders");
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || `Server error: ${res.status}`);
   }
-  return allOrders;
+  const data = await res.json();
+  return data.orders || [];
 }
 
 function mapShopifyOrders(rawOrders) {
