@@ -2485,6 +2485,8 @@ export default function App() {
         #sahara-root, #sahara-root * { text-align: left; font-family: 'DM Sans', sans-serif; line-height: normal; }
         #sahara-root button { font-family: inherit; }
         #sahara-root input { font-family: inherit; text-align: inherit; }
+        html, body, #root { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+        #sahara-root { width: 100vw !important; max-width: 100vw !important; margin: 0 !important; padding: 0 !important; position: relative; left: 50%; transform: translateX(-50%); }
       `}</style>
       {/* Header */}
       <div style={{background:"#1C1917",borderBottom:"3px solid #C9A84C",padding:"18px 28px"}}>
