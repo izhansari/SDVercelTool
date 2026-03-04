@@ -534,12 +534,29 @@ function runFulfillment(orders, inventory) {
 // ─── Global Tooltip ───────────────────────────────────────────────────────────
 const TooltipContext = createContext(null);
 
-function TooltipLayer({ children }) {
-  const [tip, setTip] = useState(null); // { x, y, info, name, sizeLabel }
+function TooltipLayer({ children, viewSkuInfo = {} }) {
+  const [tip, setTip] = useState(null);
+  const [mode, setMode] = useState("global");
+
+  const handleSetTip = useCallback((val) => {
+    if (val === null) { setTip(null); return; }
+    setTip(prev => {
+      if (!prev || prev.sku !== val.sku) setMode("global");
+      return val;
+    });
+  }, []);
+
+  const toggleMode = useCallback(() => {
+    setMode(m => m === "global" ? "view" : "global");
+  }, []);
+
+  const info = tip ? (mode === "view" && viewSkuInfo[tip.sku] ? viewSkuInfo[tip.sku] : tip.info) : null;
+  const hasViewData = tip && viewSkuInfo[tip.sku];
+
   return (
-    <TooltipContext.Provider value={setTip}>
+    <TooltipContext.Provider value={{ setTip: handleSetTip, toggleMode }}>
       {children}
-      {tip && (
+      {tip && info && (
         <div style={{
           position:"fixed", left:tip.x + 14, top:tip.y - 10,
           background:"#1C1917", color:"#F5EFE3",
@@ -547,24 +564,43 @@ function TooltipLayer({ children }) {
           fontSize:"11px", fontFamily:"'DM Mono',monospace",
           boxShadow:"0 4px 20px rgba(0,0,0,0.55)",
           pointerEvents:"none", zIndex:2147483647,
-          minWidth:"160px", lineHeight:"1.7",
-          border:"1px solid #3D3530",
+          minWidth:"175px", lineHeight:"1.7",
+          border:`1px solid ${mode==="view"?"#C9A84C":"#3D3530"}`,
+          userSelect:"none",
         }}>
-          <div style={{fontWeight:700, fontSize:"12px", color:tip.col.accent, marginBottom:"5px", whiteSpace:"nowrap"}}>
-            {tip.name}{tip.sizeLabel ? ` · ${tip.sizeLabel}` : ""}
+          <div style={{display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"5px"}}>
+            <div style={{fontWeight:700, fontSize:"12px", color:tip.col.accent, whiteSpace:"nowrap"}}>
+              {tip.name}{tip.sizeLabel ? ` · ${tip.sizeLabel}` : ""}
+            </div>
+            {hasViewData && (
+              <div style={{
+                fontSize:"9px", fontWeight:700,
+                padding:"1px 6px", borderRadius:"4px", marginLeft:"8px",
+                background: mode==="view" ? "#C9A84C" : "rgba(255,255,255,0.1)",
+                color: mode==="view" ? "#1C1917" : "#A8A29E",
+                whiteSpace:"nowrap", flexShrink:0,
+              }}>
+                {mode==="view" ? "In View" : "Global"}
+              </div>
+            )}
           </div>
           <div style={{display:"grid", gridTemplateColumns:"auto auto", gap:"1px 12px"}}>
-            <span style={{color:"#A8A29E"}}>Ordered</span>
-            <span style={{textAlign:"right", fontWeight:700}}>{tip.info.ord}</span>
-            <span style={{color:"#A8A29E"}}>Inv boxes</span>
-            <span style={{textAlign:"right", fontWeight:700, color:tip.info.inv>0?"#86EFAC":"#F5EFE3"}}>{tip.info.inv}</span>
-            <span style={{color:"#A8A29E"}}>Make boxes</span>
-            <span style={{textAlign:"right", fontWeight:700, color:tip.info.toMake>0?"#FCD34D":"#6EE7B7"}}>{tip.info.toMake}</span>
-            {tip.info.isGourmet && <>
+            <span style={{color:"#A8A29E"}}>{mode==="view" ? "In View" : "Ordered"}</span>
+            <span style={{textAlign:"right", fontWeight:700}}>{info.ord}</span>
+            <span style={{color:"#A8A29E"}}>In Inv</span>
+            <span style={{textAlign:"right", fontWeight:700, color:info.inv>0?"#86EFAC":"#F5EFE3"}}>{info.inv}</span>
+            <span style={{color:"#A8A29E"}}>To Make</span>
+            <span style={{textAlign:"right", fontWeight:700, color:info.toMake>0?"#FCD34D":"#6EE7B7"}}>{info.toMake}</span>
+            {info.isGourmet && <>
               <span style={{color:"#A8A29E"}}>Dates needed</span>
-              <span style={{textAlign:"right", fontWeight:700, color:tip.info.dates>0?"#FCA5A5":"#A8A29E"}}>{tip.info.dates ?? "—"}</span>
+              <span style={{textAlign:"right", fontWeight:700, color:info.dates>0?"#FCA5A5":"#A8A29E"}}>{info.dates ?? "—"}</span>
             </>}
           </div>
+          {hasViewData && (
+            <div style={{marginTop:"5px", fontSize:"9px", color:"#57534E", textAlign:"center"}}>
+              click badge to toggle view
+            </div>
+          )}
         </div>
       )}
     </TooltipContext.Provider>
@@ -572,7 +608,9 @@ function TooltipLayer({ children }) {
 }
 
 function SkuBadge({sku, qty, strikethrough=false, holdStrikethrough=false, info=null}) {
-  const setTip = useContext(TooltipContext);
+  const ctx = useContext(TooltipContext);
+  const setTip = ctx?.setTip;
+  const toggleMode = ctx?.toggleMode;
   const col = getCol(sku);
   const isReg   = sku.includes("-R-");
   const isGrand = sku.includes("-L-");
@@ -597,14 +635,15 @@ function SkuBadge({sku, qty, strikethrough=false, holdStrikethrough=false, info=
 
   return (
     <span
-      onMouseEnter={e => info && setTip && setTip({ x: e.clientX, y: e.clientY, info, name, sizeLabel, col })}
-      onMouseMove={e => info && setTip && setTip({ x: e.clientX, y: e.clientY, info, name, sizeLabel, col })}
+      onMouseEnter={e => info && setTip && setTip({ x: e.clientX, y: e.clientY, info, name, sizeLabel, col, sku })}
+      onMouseMove={e => info && setTip && setTip({ x: e.clientX, y: e.clientY, info, name, sizeLabel, col, sku })}
       onMouseLeave={() => setTip && setTip(null)}
+      onClick={e => { e.stopPropagation(); if (info && toggleMode) toggleMode(); }}
       style={{
         display:"inline-flex", alignItems:"center", gap:"4px",
         borderRadius:"4px", padding:"2px 8px", fontSize:"11px", fontWeight:600,
         fontFamily:"'DM Mono',monospace", whiteSpace:"nowrap",
-        cursor:"default",
+        cursor: info ? "pointer" : "default",
         ...style,
       }}>
       {qty>1&&<span style={{background: strikethrough?"#EF4444":col.accent, color:"#fff", borderRadius:"3px", padding:"0 4px", fontSize:"10px", marginRight:"1px"}}>×{qty}</span>}
@@ -1222,18 +1261,21 @@ function PrepPlanTab({ orders, inventory, csvLoaded, csvFilename, datesReg, setD
 
   // Build plain HTML for printing — no React, no styling conflicts
   const doPrint = () => {
-    const today = new Date().toLocaleDateString("en-US",{month:"numeric",day:"numeric",year:"numeric"});
+    const now = new Date();
+    const today = now.toLocaleDateString("en-US",{month:"numeric",day:"numeric",year:"numeric"});
+    const timeStr = now.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
 
     const th = (txt, right=false) => `<th class="${right?'right':''}">${txt}</th>`;
     const td = (txt, cls="") => `<td class="${cls}">${txt??""}</td>`;
     const dash = "—";
 
-    let rows = "";
+    const sectionBlocks = [];
 
     for (const section of plan.sections) {
       const showWholeSection = shouldShow(section.label);
       const showGrand = section.hasSizes && (shouldShow(section.label) || (shouldShow("gourmet-grand") && section.isGourmet));
       const showReg   = section.hasSizes && (shouldShow(section.label) || (shouldShow("gourmet-reg")   && section.isGourmet));
+      let rows = "";
 
       if (!section.hasSizes) {
         if (!showWholeSection || section.rows.length === 0) continue;
@@ -1256,114 +1298,87 @@ function PrepPlanTab({ orders, inventory, csvLoaded, csvFilename, datesReg, setD
           ${td(section.totalToMake,"right tomake")}
           ${td(dash,"right dates")}
         </tr>`;
-        continue;
-      }
+      } else {
+        let collLabelDone = false;
+        const collTd = () => { const v = collLabelDone?"":section.label; collLabelDone=true; return td(v?`<b>${v}</b>`:""); };
 
-      let collLabelDone = false;
-      const collTd = () => { const v = collLabelDone?"":section.label; collLabelDone=true; return td(v?`<b>${v}</b>`:""); };
-
-      if (showGrand && section.grandRows.length > 0) {
-        section.grandRows.forEach((row,ri) => {
-          rows += `<tr>
-            ${ri===0?collTd():td("")}
-            ${td("Grand","muted")}
-            ${td(row.name)}
-            ${td(row.ordered||dash,"right")}
-            ${td(row.inInv>0?row.inInv:dash,"right")}
-            ${td(row.toMake>0?`<b>${row.toMake}</b>`:0,"right tomake")}
-            ${td(section.isGourmet&&row.datesNeeded>0?row.datesNeeded:dash,"right dates")}
+        if (showGrand && section.grandRows.length > 0) {
+          section.grandRows.forEach((row,ri) => {
+            rows += `<tr>
+              ${ri===0?collTd():td("")}
+              ${td("Grand","muted")}
+              ${td(row.name)}
+              ${td(row.ordered||dash,"right")}
+              ${td(row.inInv>0?row.inInv:dash,"right")}
+              ${td(row.toMake>0?`<b>${row.toMake}</b>`:0,"right tomake")}
+              ${td(section.isGourmet&&row.datesNeeded>0?row.datesNeeded:dash,"right dates")}
+            </tr>`;
+          });
+          rows += `<tr class="total-row">
+            <td></td><td></td><td><b>Grand Total</b></td>
+            ${td(section.grandTotal.ordered||dash,"right")}
+            ${td(section.grandTotal.inInv>0?section.grandTotal.inInv:dash,"right")}
+            ${td(section.grandTotal.toMake,"right tomake")}
+            ${td(section.isGourmet&&section.grandTotal.dates>0?section.grandTotal.dates:dash,"right dates")}
           </tr>`;
-        });
-        rows += `<tr class="total-row">
-          <td></td><td></td>
-          <td><b>Grand Total</b></td>
-          ${td(section.grandTotal.ordered||dash,"right")}
-          ${td(section.grandTotal.inInv>0?section.grandTotal.inInv:dash,"right")}
-          ${td(section.grandTotal.toMake,"right tomake")}
-          ${td(section.isGourmet&&section.grandTotal.dates>0?section.grandTotal.dates:dash,"right dates")}
-        </tr>`;
-      }
-
-      if (showReg && section.regRows.length > 0) {
-        section.regRows.forEach((row,ri) => {
-          rows += `<tr>
-            ${ri===0&&!showGrand?collTd():td("")}
-            ${td("Regular","muted")}
-            ${td(row.name)}
-            ${td(row.ordered||dash,"right")}
-            ${td(row.inInv>0?row.inInv:dash,"right")}
-            ${td(row.toMake>0?`<b>${row.toMake}</b>`:0,"right tomake")}
-            ${td(section.isGourmet&&row.datesNeeded>0?row.datesNeeded:dash,"right dates")}
+        }
+        if (showReg && section.regRows.length > 0) {
+          section.regRows.forEach((row,ri) => {
+            rows += `<tr>
+              ${ri===0&&!showGrand?collTd():td("")}
+              ${td("Reg","muted")}
+              ${td(row.name)}
+              ${td(row.ordered||dash,"right")}
+              ${td(row.inInv>0?row.inInv:dash,"right")}
+              ${td(row.toMake>0?`<b>${row.toMake}</b>`:0,"right tomake")}
+              ${td(section.isGourmet&&row.datesNeeded>0?row.datesNeeded:dash,"right dates")}
+            </tr>`;
+          });
+          rows += `<tr class="total-row">
+            <td></td><td></td><td><b>Reg Total</b></td>
+            ${td(section.regTotal.ordered||dash,"right")}
+            ${td(section.regTotal.inInv>0?section.regTotal.inInv:dash,"right")}
+            ${td(section.regTotal.toMake,"right tomake")}
+            ${td(section.isGourmet&&section.regTotal.dates>0?section.regTotal.dates:dash,"right dates")}
           </tr>`;
-        });
-        rows += `<tr class="total-row">
-          <td></td><td></td>
-          <td><b>Regular Total</b></td>
-          ${td(section.regTotal.ordered||dash,"right")}
-          ${td(section.regTotal.inInv>0?section.regTotal.inInv:dash,"right")}
-          ${td(section.regTotal.toMake,"right tomake")}
-          ${td(section.isGourmet&&section.regTotal.dates>0?section.regTotal.dates:dash,"right dates")}
-        </tr>`;
+        }
       }
+      if (rows) sectionBlocks.push(rows);
     }
 
-    // Full total row
-    rows += `<tr class="grand-total-row">
-      <td><b>FULL TOTAL</b></td><td></td><td></td>
+    const fullTotalRow = `<tr class="grand-total-row">
+      <td><b>TOTAL</b></td><td></td><td></td>
       ${td(plan.grandTotal.ordered,"right")}
       ${td(plan.grandTotal.inInv||0,"right")}
       ${td(plan.grandTotal.toMake,"right tomake")}
       ${td(plan.grandTotal.dates>0?plan.grandTotal.dates:0,"right dates")}
     </tr>`;
+    if (sectionBlocks.length) sectionBlocks[sectionBlocks.length-1] += fullTotalRow;
 
-    // Flavor summary
-    let flavorRows = "";
+    const thead = `<thead><tr>${th("Col")}${th("Sz")}${th("Product")}${th("Ord",true)}${th("Inv",true)}${th("Make",true)}${th("Dates",true)}</tr></thead>`;
+    const tablesHTML = sectionBlocks.map(rows => `<div class="section-block"><table>${thead}<tbody>${rows}</tbody></table></div>`).join("");
+
+    let flavorHTML = "";
     if (shouldShow("flavor") && plan.flavorSummary.length > 0) {
+      let fr = "";
       plan.flavorSummary.forEach(f => {
-        flavorRows += `<tr>
-          <td><b>${f.name}</b></td>
-          <td class="right tomake">${f.regToMake||"—"}</td>
-          <td class="right tomake">${f.grandToMake||"—"}</td>
-          <td class="right tomake"><b>${f.regToMake+f.grandToMake}</b></td>
-          <td class="right dates"><b>${f.datesNeeded}</b></td>
-        </tr>`;
+        fr += `<tr><td><b>${f.name}</b></td><td class="right tomake">${f.regToMake||"—"}</td><td class="right tomake">${f.grandToMake||"—"}</td><td class="right tomake"><b>${f.regToMake+f.grandToMake}</b></td><td class="right dates"><b>${f.datesNeeded}</b></td></tr>`;
       });
-      const totReg   = plan.flavorSummary.reduce((s,f)=>s+f.regToMake,0);
-      const totGrand = plan.flavorSummary.reduce((s,f)=>s+f.grandToMake,0);
-      const totDates = plan.flavorSummary.reduce((s,f)=>s+f.datesNeeded,0);
-      flavorRows += `<tr class="grand-total-row"><td><b>Total</b></td><td class="right">${totReg}</td><td class="right">${totGrand}</td><td class="right">${totReg+totGrand}</td><td class="right dates">${totDates}</td></tr>`;
+      const tR=plan.flavorSummary.reduce((s,f)=>s+f.regToMake,0), tG=plan.flavorSummary.reduce((s,f)=>s+f.grandToMake,0), tD=plan.flavorSummary.reduce((s,f)=>s+f.datesNeeded,0);
+      fr += `<tr class="grand-total-row"><td><b>Total</b></td><td class="right">${tR}</td><td class="right">${tG}</td><td class="right">${tR+tG}</td><td class="right dates">${tD}</td></tr>`;
+      flavorHTML = `<div class="section-block"><div style="font-size:8pt;font-weight:bold;border-bottom:1pt solid #ccc;padding-bottom:2pt;margin-bottom:3pt;margin-top:6pt;">Gourmet — Boxes by Flavor</div><table><thead><tr>${th("Flavor")}${th("Reg",true)}${th("Grand",true)}${th("Total",true)}${th("Dates",true)}</tr></thead><tbody>${fr}</tbody></table></div>`;
     }
 
-    const html = `
-      <div style="font-family:'Courier New',monospace;">
-        <div style="font-size:13pt;font-weight:bold;text-decoration:underline;text-align:center;margin-bottom:8pt;letter-spacing:0.03em;">${today}</div>
-        <table>
-          <thead><tr>
-            ${th("Collection")}${th("Size")}${th("Product")}
-            ${th("Items Across Orders",true)}${th("Box in Inv",true)}${th("Boxes To Make",true)}${th("Dates/Flav (Gourmet)",true)}
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        ${flavorRows ? `
-          <div style="margin-top:8pt;font-size:9pt;font-weight:bold;border-bottom:1pt solid #ccc;padding-bottom:2pt;margin-bottom:3pt;">Gourmet — Boxes by Flavor</div>
-          <table>
-            <thead><tr>${th("Flavor")}${th("Reg Boxes",true)}${th("Grand Boxes",true)}${th("Total Boxes",true)}${th("Dates Needed",true)}</tr></thead>
-            <tbody>${flavorRows}</tbody>
-          </table>` : ""}
-      </div>`;
+    const html = `<div style="font-family:'Courier New',monospace;">
+      <div style="font-size:13pt;font-weight:bold;text-decoration:underline;text-align:center;margin-bottom:1pt;">${today}</div>
+      <div style="font-size:8pt;font-weight:bold;text-align:center;margin-bottom:7pt;color:#555;">${timeStr}</div>
+      ${tablesHTML}${flavorHTML}
+    </div>`;
 
-    // Inject into a portal div outside the React root
     let portal = document.getElementById("prep-print-portal");
-    if (!portal) {
-      portal = document.createElement("div");
-      portal.id = "prep-print-portal";
-      document.body.appendChild(portal);
-    }
+    if (!portal) { portal = document.createElement("div"); portal.id = "prep-print-portal"; document.body.appendChild(portal); }
     portal.innerHTML = html;
-
     window.print();
-
-    // Clean up after print dialog closes
     setTimeout(() => { portal.innerHTML = ""; }, 1000);
   };
 
@@ -1557,25 +1572,24 @@ function PrepPlanTab({ orders, inventory, csvLoaded, csvFilename, datesReg, setD
         @media print {
           @page { size: 6in 4in landscape; margin: 5mm; }
           body { margin: 0 !important; }
-          /* Hide everything except the print container */
           body > * { display: none !important; }
           #prep-print-portal { display: block !important; }
           #prep-print-portal * { display: revert; }
-          /* Table styling for print */
           #prep-print-portal table { width: 100%; border-collapse: collapse; font-size: 9pt; font-family: 'Courier New', monospace; }
-          #prep-print-portal th { background: #f2f2f2 !important; color: #333 !important; font-size: 7.5pt; padding: 3pt 5pt; text-align: left; border: 1px solid #ccc; font-weight: bold; }
+          #prep-print-portal th { background: #f2f2f2 !important; color: #333 !important; font-size: 6.5pt; padding: 2pt 4pt; text-align: left; border: 1px solid #ccc; font-weight: bold; }
           #prep-print-portal th.right { text-align: right; }
-          #prep-print-portal td { padding: 2.5pt 5pt; border-bottom: 1px solid #e0e0e0; font-size: 9pt; }
+          #prep-print-portal td { padding: 2pt 4pt; border-bottom: 1px solid #e0e0e0; font-size: 8.5pt; font-weight: bold; }
           #prep-print-portal td.right { text-align: right; font-family: 'Courier New', monospace; }
+          #prep-print-portal td.muted { font-weight: bold; color: #666; }
           #prep-print-portal tr.total-row td { background: #111 !important; color: #fff !important; font-weight: bold; border-bottom: 2px solid #333; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           #prep-print-portal tr.grand-total-row td { background: #000 !important; color: #C9A84C !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           #prep-print-portal tr.total-row td.dates { color: #ffaaaa !important; }
           #prep-print-portal tr.total-row td.tomake { color: #ffdd88 !important; }
           #prep-print-portal tr { page-break-inside: avoid; break-inside: avoid; }
           #prep-print-portal thead { display: table-header-group; }
+          #prep-print-portal .section-block { page-break-inside: avoid; break-inside: avoid; margin-bottom: 4pt; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
-        /* Hide print portal on screen */
         #prep-print-portal { display: none; }
       `}</style>
 
@@ -2482,10 +2496,28 @@ export default function App() {
     [allOrders, clauses]
   );
 
+  // Per-SKU stats scoped to the current filtered view
+  const viewSkuInfo = useMemo(() => {
+    const viewOrdered = {};
+    visible.forEach(o => o.items.forEach(i => { viewOrdered[i.sku] = (viewOrdered[i.sku]||0) + i.qty; }));
+    const m = {};
+    Object.keys(viewOrdered).forEach(sku => {
+      const ord = viewOrdered[sku]||0;
+      const inv = inventory[sku]||0;
+      const toMake = Math.max(0, ord - inv);
+      const isGourmet = sku.startsWith("G-");
+      const isGrand = sku.includes("-L-");
+      const datesPerBox = isGrand ? datesGrand : datesReg;
+      const dates = isGourmet && toMake > 0 ? toMake * datesPerBox : null;
+      m[sku] = { ord, inv, toMake, dates, isGourmet };
+    });
+    return m;
+  }, [visible, inventory, datesReg, datesGrand]);
+
   const TABS = [["orders","📦 Orders"],["inventory","📋 Inventory"],["boxes","📫 Boxes"],["prep","📋 Prep Plan"],["weights","⚖️ Weights"]];
 
   return (
-    <TooltipLayer>
+    <TooltipLayer viewSkuInfo={viewSkuInfo}>
     <div id="sahara-root" style={{minHeight:"100vh",background:"#F7F6F3",fontFamily:"'DM Sans',sans-serif"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500;600&display=swap');
@@ -2825,11 +2857,11 @@ export default function App() {
             </div>
             <div style={{display:"flex", flexDirection:"column", gap:"10px"}}>
               {[
-                { label:"Styling & badge fixes", note:"Removed 'Short by' from tooltip. Missing items in both partial and hold orders now show red border + strikethrough while keeping their collection color." },
-                { label:"On-hold strikethrough", note:"Hold order items get strikethrough with red border instead of turning fully red — collection color stays visible so you can still identify product type at a glance." },
-                { label:"Need lines removed", note:"Removed the italic 'Need: ...' lines from order cards. That info now lives in the hover tooltip on each badge (Inv boxes / Make boxes)." },
+                { label:"Print improvements", note:"Added time to print header. All printed text is now bold for thermal printer clarity. Column headers shortened (Col/Sz/Ord/Inv/Make/Dates). Each collection is wrapped in a no-split block so it won't span more than one page break." },
+                { label:"Tooltip: In View toggle", note:"Click any SKU badge to toggle the tooltip between Global (all orders) and In View (current filtered set). Badge border turns gold in view mode. Labels renamed to 'In Inv' and 'To Make'." },
+                { label:"Styling & badge fixes", note:"Removed 'Short by' from tooltip. Missing items in partial and hold orders now show red border + strikethrough while keeping their collection color." },
                 { label:"Shopify live orders", note:"Added direct Shopify API fetch via Vercel serverless proxy. Orders load live with a Refresh button. CSV upload kept as fallback. Header shows source + fetch timestamp." },
-                { label:"Quick view weights", note:"Weight values from the Weights tab now appear on Solo Reg / Duo Reg / Solo Grand / Duo Grand filter buttons. Updating the Weights tab reflects instantly on the buttons." },
+                { label:"Quick view weights + active state", note:"Weight values from the Weights tab appear on preset filter buttons. Active filter button now shows amber fill. Fixed active state detection by stripping IDs from clause comparison." },
               ].map((item, i) => (
                 <div key={i} style={{
                   background:"rgba(255,255,255,0.04)", borderRadius:"8px",
