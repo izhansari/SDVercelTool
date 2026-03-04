@@ -1053,16 +1053,16 @@ function buildPrepPlan(orders, inventory) {
   if (gourmetSection) {
     const flavorMap = {};
     for (const row of (gourmetSection.regRows||[])) {
-      if (!flavorMap[row.name]) flavorMap[row.name] = { name: row.name, regToMake: 0, grandToMake: 0, datesNeeded: 0 };
-      flavorMap[row.name].regToMake   += row.toMake;
-      flavorMap[row.name].datesNeeded += row.datesNeeded || 0;
+      if (!flavorMap[row.name]) flavorMap[row.name] = { name: row.name, regToMake: 0, grandToMake: 0, regDates: 0, grandDates: 0 };
+      flavorMap[row.name].regToMake += row.toMake;
+      flavorMap[row.name].regDates  += row.datesNeeded || 0;
     }
     for (const row of (gourmetSection.grandRows||[])) {
-      if (!flavorMap[row.name]) flavorMap[row.name] = { name: row.name, regToMake: 0, grandToMake: 0, datesNeeded: 0 };
+      if (!flavorMap[row.name]) flavorMap[row.name] = { name: row.name, regToMake: 0, grandToMake: 0, regDates: 0, grandDates: 0 };
       flavorMap[row.name].grandToMake += row.toMake;
-      flavorMap[row.name].datesNeeded += row.datesNeeded || 0;
+      flavorMap[row.name].grandDates  += row.datesNeeded || 0;
     }
-    flavorSummary.push(...Object.values(flavorMap).filter(f => f.regToMake > 0 || f.grandToMake > 0 || f.datesNeeded > 0));
+    flavorSummary.push(...Object.values(flavorMap).filter(f => f.regToMake > 0 || f.grandToMake > 0));
   }
 
   const grandTotal = {
@@ -1190,17 +1190,17 @@ function PrepPlanTab({ orders, inventory, csvLoaded, csvFilename, datesReg, setD
     const flavorMap = {};
     if (gSec) {
       for (const row of (gSec.regRows||[])) {
-        if (!flavorMap[row.name]) flavorMap[row.name]={name:row.name,regToMake:0,grandToMake:0,datesNeeded:0};
-        flavorMap[row.name].regToMake   += row.toMake;
-        flavorMap[row.name].datesNeeded += row.datesNeeded||0;
+        if (!flavorMap[row.name]) flavorMap[row.name]={name:row.name,regToMake:0,grandToMake:0,regDates:0,grandDates:0};
+        flavorMap[row.name].regToMake += row.toMake;
+        flavorMap[row.name].regDates  += row.datesNeeded||0;
       }
       for (const row of (gSec.grandRows||[])) {
-        if (!flavorMap[row.name]) flavorMap[row.name]={name:row.name,regToMake:0,grandToMake:0,datesNeeded:0};
+        if (!flavorMap[row.name]) flavorMap[row.name]={name:row.name,regToMake:0,grandToMake:0,regDates:0,grandDates:0};
         flavorMap[row.name].grandToMake += row.toMake;
-        flavorMap[row.name].datesNeeded += row.datesNeeded||0;
+        flavorMap[row.name].grandDates  += row.datesNeeded||0;
       }
     }
-    const flavorSummary = Object.values(flavorMap).filter(f=>f.regToMake>0||f.grandToMake>0||f.datesNeeded>0);
+    const flavorSummary = Object.values(flavorMap).filter(f=>f.regToMake>0||f.grandToMake>0);
 
     const grandTotal={
       ordered:sections.reduce((s,sec)=>s+sec.totalOrdered,0),
@@ -1362,16 +1362,15 @@ function PrepPlanTab({ orders, inventory, csvLoaded, csvFilename, datesReg, setD
     if (shouldShow("flavor") && plan.flavorSummary.length > 0) {
       let fr = "";
       plan.flavorSummary.forEach(f => {
-        fr += `<tr><td><b>${f.name}</b></td><td class="right tomake">${f.regToMake||"—"}</td><td class="right tomake">${f.grandToMake||"—"}</td><td class="right tomake"><b>${f.regToMake+f.grandToMake}</b></td><td class="right dates"><b>${f.datesNeeded}</b></td></tr>`;
+        fr += `<tr><td><b>${f.name}</b></td><td class="right tomake">${f.regToMake||"—"}</td><td class="right dates">${f.regDates||"—"}</td><td class="right tomake">${f.grandToMake||"—"}</td><td class="right dates">${f.grandDates||"—"}</td><td class="right dates"><b>${f.regDates+f.grandDates}</b></td></tr>`;
       });
-      const tR=plan.flavorSummary.reduce((s,f)=>s+f.regToMake,0), tG=plan.flavorSummary.reduce((s,f)=>s+f.grandToMake,0), tD=plan.flavorSummary.reduce((s,f)=>s+f.datesNeeded,0);
-      fr += `<tr class="grand-total-row"><td><b>Total</b></td><td class="right">${tR}</td><td class="right">${tG}</td><td class="right">${tR+tG}</td><td class="right dates">${tD}</td></tr>`;
-      flavorHTML = `<div class="section-block"><div style="font-size:8pt;font-weight:bold;border-bottom:1pt solid #ccc;padding-bottom:2pt;margin-bottom:3pt;margin-top:6pt;">Gourmet — Boxes by Flavor</div><table><thead><tr>${th("Flavor")}${th("Reg",true)}${th("Grand",true)}${th("Total",true)}${th("Dates",true)}</tr></thead><tbody>${fr}</tbody></table></div>`;
+      const tR=plan.flavorSummary.reduce((s,f)=>s+f.regToMake,0), tRD=plan.flavorSummary.reduce((s,f)=>s+f.regDates,0), tG=plan.flavorSummary.reduce((s,f)=>s+f.grandToMake,0), tGD=plan.flavorSummary.reduce((s,f)=>s+f.grandDates,0);
+      fr += `<tr class="grand-total-row"><td><b>Total</b></td><td class="right">${tR}</td><td class="right">${tRD}</td><td class="right">${tG}</td><td class="right">${tGD}</td><td class="right dates">${tRD+tGD}</td></tr>`;
+      flavorHTML = `<div class="section-block"><div style="font-size:8pt;font-weight:bold;border-bottom:1pt solid #ccc;padding-bottom:2pt;margin-bottom:3pt;margin-top:6pt;">Gourmet — Flavor Breakdown</div><table><thead><tr>${th("Flavor")}${th("Reg Bx",true)}${th("Reg Dt",true)}${th("Grd Bx",true)}${th("Grd Dt",true)}${th("Tot Dt",true)}</tr></thead><tbody>${fr}</tbody></table></div>`;
     }
 
     const html = `<div style="font-family:'Courier New',monospace;">
-      <div style="font-size:13pt;font-weight:bold;text-decoration:underline;text-align:center;margin-bottom:1pt;">${today}</div>
-      <div style="font-size:8pt;font-weight:bold;text-align:center;margin-bottom:7pt;color:#555;">${timeStr}</div>
+      <div style="font-size:13pt;font-weight:bold;text-decoration:underline;text-align:center;margin-bottom:8pt;">${today} @ ${timeStr}</div>
       ${tablesHTML}${flavorHTML}
     </div>`;
 
@@ -1682,53 +1681,69 @@ function PrepPlanTab({ orders, inventory, csvLoaded, csvFilename, datesReg, setD
         </div>
 
         {/* Gourmet flavor summary */}
-        {shouldShow("flavor") && plan.flavorSummary.length > 0 && (
+        {shouldShow("flavor") && plan.flavorSummary.length > 0 && (() => {
+          const mono = "'Courier New',monospace";
+          const divL = "2px solid #111";
+          const cellBase = {padding:"8px 14px", fontFamily:mono, borderBottom:"1px solid #E8E8E8", fontSize:"13px"};
+          const numCell = (val, opts={}) => ({...cellBase, textAlign:"right", fontWeight:700, color: opts.gold?"#C9A84C":"#111"});
+          const tR  = plan.flavorSummary.reduce((s,f)=>s+f.regToMake,0);
+          const tG  = plan.flavorSummary.reduce((s,f)=>s+f.grandToMake,0);
+          const tRD = plan.flavorSummary.reduce((s,f)=>s+f.regDates,0);
+          const tGD = plan.flavorSummary.reduce((s,f)=>s+f.grandDates,0);
+          return (
           <div style={{display:"flex",justifyContent:"center",marginBottom:"12px"}}>
-            <div style={{display:"inline-block", background:"#fff",border:"1.5px solid #ccc",borderRadius:"6px",overflow:"hidden"}}>
-              <div style={{background:"#F0F0F0",borderBottom:"1px solid #ccc",padding:"7px 12px",display:"flex",alignItems:"center",gap:"8px"}}> 
+            <div style={{display:"inline-block", background:"#fff", border:"1.5px solid #ccc", borderRadius:"6px", overflow:"hidden"}}>
+              {/* Title bar */}
+              <div style={{background:"#F0F0F0",borderBottom:"1px solid #ccc",padding:"7px 12px",display:"flex",alignItems:"center",gap:"8px"}}>
                 <div style={{width:"7px",height:"7px",borderRadius:"50%",background:"#333",flexShrink:0}}/>
-                <span style={{fontSize:"11px",fontWeight:700,color:"#111",letterSpacing:"0.07em",textTransform:"uppercase"}}>Gourmet — Boxes by Flavor</span>
-                <span style={{fontSize:"10px",color:"#888"}}>Reg and Grand split</span>
+                <span style={{fontSize:"11px",fontWeight:700,color:"#111",letterSpacing:"0.07em",textTransform:"uppercase"}}>Gourmet — Flavor Breakdown</span>
+                <span style={{fontSize:"10px",color:"#888"}}>Boxes + Dates / Flavor</span>
               </div>
-            <table style={{width:"auto",borderCollapse:"collapse",tableLayout:"auto"}}>
-              <colgroup>
-                <col/>
-                <col style={{width:"54px"}}/>
-                <col style={{width:"54px"}}/>
-                <col style={{width:"54px"}}/>
-                <col style={{width:"60px"}}/>
-              </colgroup>
-              <thead>
-                <tr>
-                  <TH>Flavor</TH>
-                  <TH right>Reg<span style={{display:"block"}}>Boxes</span></TH>
-                  <TH right>Grand<span style={{display:"block"}}>Boxes</span></TH>
-                  <TH right>Total<span style={{display:"block"}}>Boxes</span></TH>
-                  <TH right>Dates<span style={{display:"block"}}>Needed</span></TH>
-                </tr>
-              </thead>
-              <tbody>
-                {plan.flavorSummary.map((f,i) => (
-                  <tr key={f.name} style={{background:i%2===0?"#fff":"#F5F5F5"}}>
-                    <td style={{padding:"6px 12px 6px 6px", fontSize:"12px", fontWeight:600, color:"#000", fontFamily:"'Courier New',monospace", borderBottom:"1px solid #F0EDEA", whiteSpace:"nowrap"}}>{f.name}</td>
-                    <TD right muted={!f.regToMake}>{f.regToMake||"—"}</TD>
-                    <TD right muted={!f.grandToMake}>{f.grandToMake||"—"}</TD>
-                    <TD right bold>{f.regToMake+f.grandToMake}</TD>
-                    <TD right bold>{f.datesNeeded}</TD>
+              <table style={{borderCollapse:"collapse", tableLayout:"auto"}}>
+                <thead>
+                  {/* Group row */}
+                  <tr style={{background:"#F8F8F8"}}>
+                    <th style={{padding:"4px 14px 2px", fontFamily:mono, fontSize:"10px", fontWeight:700, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em", borderBottom:"none", textAlign:"left"}}>Flavor</th>
+                    <th colSpan={2} style={{padding:"4px 14px 2px", fontFamily:mono, fontSize:"10px", fontWeight:700, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em", textAlign:"center", borderLeft:divL, borderBottom:"none"}}>Box</th>
+                    <th colSpan={2} style={{padding:"4px 14px 2px", fontFamily:mono, fontSize:"10px", fontWeight:700, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em", textAlign:"center", borderLeft:divL, borderBottom:"none"}}>Dates</th>
+                    <th style={{padding:"4px 14px 2px", fontFamily:mono, fontSize:"10px", fontWeight:700, color:"#555", textTransform:"uppercase", letterSpacing:"0.06em", textAlign:"center", borderLeft:divL, borderBottom:"none"}}>Dates</th>
                   </tr>
-                ))}
-                <tr style={{background:"#111"}}>
-                  <td style={{padding:"6px 12px 6px 6px",fontSize:"11px",fontWeight:700,color:"#fff",borderTop:"2px solid #000",fontFamily:"'Courier New',monospace",whiteSpace:"nowrap"}}>Total</td>
-                  <td style={{padding:"6px 6px",fontSize:"11px",fontWeight:700,color:"#fff",textAlign:"right",fontFamily:"'Courier New',monospace",borderTop:"2px solid #000"}}>{plan.flavorSummary.reduce((s,f)=>s+f.regToMake,0)}</td>
-                  <td style={{padding:"6px 6px",fontSize:"11px",fontWeight:700,color:"#fff",textAlign:"right",fontFamily:"'Courier New',monospace",borderTop:"2px solid #000"}}>{plan.flavorSummary.reduce((s,f)=>s+f.grandToMake,0)}</td>
-                  <td style={{padding:"6px 6px",fontSize:"11px",fontWeight:700,color:"#fff",textAlign:"right",fontFamily:"'Courier New',monospace",borderTop:"2px solid #000"}}>{plan.flavorSummary.reduce((s,f)=>s+f.regToMake+f.grandToMake,0)}</td>
-                  <td style={{padding:"6px 6px",fontSize:"11px",fontWeight:700,color:"#ccc",textAlign:"right",fontFamily:"'Courier New',monospace",borderTop:"2px solid #000"}}>{plan.flavorSummary.reduce((s,f)=>s+f.datesNeeded,0)}</td>
-                </tr>
-              </tbody>
-            </table>
+                  {/* Sub-header row */}
+                  <tr style={{background:"#F8F8F8", borderBottom:"2px solid #ccc"}}>
+                    <th style={{padding:"0 14px 5px", fontFamily:mono, fontSize:"11px", fontWeight:700, color:"#333", textAlign:"left", borderBottom:"2px solid #ccc"}}></th>
+                    <th style={{padding:"0 14px 5px", fontFamily:mono, fontSize:"11px", fontWeight:700, color:"#333", textAlign:"right", borderLeft:divL, borderBottom:"2px solid #ccc"}}>Reg</th>
+                    <th style={{padding:"0 14px 5px", fontFamily:mono, fontSize:"11px", fontWeight:700, color:"#333", textAlign:"right", borderBottom:"2px solid #ccc"}}>Grand</th>
+                    <th style={{padding:"0 14px 5px", fontFamily:mono, fontSize:"11px", fontWeight:700, color:"#333", textAlign:"right", borderLeft:divL, borderBottom:"2px solid #ccc"}}>Reg</th>
+                    <th style={{padding:"0 14px 5px", fontFamily:mono, fontSize:"11px", fontWeight:700, color:"#333", textAlign:"right", borderBottom:"2px solid #ccc"}}>Grand</th>
+                    <th style={{padding:"0 14px 5px", fontFamily:mono, fontSize:"11px", fontWeight:700, color:"#333", textAlign:"right", borderLeft:divL, borderBottom:"2px solid #ccc"}}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plan.flavorSummary.map((f,i) => (
+                    <tr key={f.name} style={{background:i%2===0?"#fff":"#F7F7F7"}}>
+                      <td style={{...cellBase, fontWeight:600, whiteSpace:"nowrap", minWidth:"130px"}}>{f.name}</td>
+                      <td style={{...numCell(f.regToMake,   {muted:!f.regToMake}),   borderLeft:divL}}>{f.regToMake||"—"}</td>
+                      <td style={{...numCell(f.grandToMake, {muted:!f.grandToMake})}}>{f.grandToMake||"—"}</td>
+                      <td style={{...numCell(f.regDates,    {muted:!f.regDates}),    borderLeft:divL}}>{f.regDates||"—"}</td>
+                      <td style={{...numCell(f.grandDates,  {muted:!f.grandDates})}}>{f.grandDates||"—"}</td>
+                      <td style={{...numCell(f.regDates+f.grandDates, {bold:true}),  borderLeft:divL}}>{f.regDates+f.grandDates}</td>
+                    </tr>
+                  ))}
+                  {/* Total row */}
+                  <tr style={{background:"#111"}}>
+                    <td style={{padding:"7px 14px", fontFamily:mono, fontSize:"12px", fontWeight:700, color:"#fff", whiteSpace:"nowrap"}}>Total</td>
+                    <td style={{padding:"7px 14px", fontFamily:mono, fontSize:"12px", fontWeight:700, color:"#fff", textAlign:"right", borderLeft:divL}}>{tR}</td>
+                    <td style={{padding:"7px 14px", fontFamily:mono, fontSize:"12px", fontWeight:700, color:"#fff", textAlign:"right"}}>{tG}</td>
+                    <td style={{padding:"7px 14px", fontFamily:mono, fontSize:"12px", fontWeight:700, color:"#fff", textAlign:"right", borderLeft:divL}}>{tRD}</td>
+                    <td style={{padding:"7px 14px", fontFamily:mono, fontSize:"12px", fontWeight:700, color:"#fff", textAlign:"right"}}>{tGD}</td>
+                    <td style={{padding:"7px 14px", fontFamily:mono, fontSize:"12px", fontWeight:700, color:"#fff", textAlign:"right", borderLeft:divL}}>{tRD+tGD}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
-        )}
+          );
+        })()}
         </div>
       </div>
     );
@@ -2599,8 +2614,8 @@ export default function App() {
                     <div style={{flex:1, height:"1px", background:"#E7E5E4"}}/>
                   </div>
                   <div onDrop={onDrop} onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onClick={()=>fileRef.current.click()}
-                    style={{border:`2px dashed ${dragOver?"#C9A84C":"#D6D3CD"}`,borderRadius:"14px",padding:"36px 24px",textAlign:"center",background:dragOver?"#FFFBEB":"#fff",cursor:"pointer",transition:"all 0.2s"}}>
-                    <div style={{fontSize:"28px",marginBottom:"8px"}}>📂</div>
+                    style={{border:`2px dashed ${dragOver?"#C9A84C":"#D6D3CD"}`,borderRadius:"14px",padding:"36px 24px",textAlign:"center",background:dragOver?"#FFFBEB":"#fff",cursor:"pointer",transition:"all 0.2s",display:"flex",flexDirection:"column",alignItems:"center"}}>
+                    <div style={{fontSize:"28px",marginBottom:"8px",lineHeight:1}}>📂</div>
                     <div style={{fontSize:"14px",fontWeight:600,color:"#292524",marginBottom:"4px"}}>Drop a Shopify orders CSV here</div>
                     <div style={{fontSize:"11px",color:"#78716C",marginBottom:"14px"}}>or click to browse · from Orders → Export in Shopify admin</div>
                     <span style={{background:"#F5F4F1",color:"#57534E",padding:"7px 18px",borderRadius:"8px",fontSize:"12px",fontWeight:600,border:"1px solid #E7E5E4"}}>Choose File</span>
@@ -2857,11 +2872,11 @@ export default function App() {
             </div>
             <div style={{display:"flex", flexDirection:"column", gap:"10px"}}>
               {[
-                { label:"Print improvements", note:"Added time to print header. All printed text is now bold for thermal printer clarity. Column headers shortened (Col/Sz/Ord/Inv/Make/Dates). Each collection is wrapped in a no-split block so it won't span more than one page break." },
-                { label:"Tooltip: In View toggle", note:"Click any SKU badge to toggle the tooltip between Global (all orders) and In View (current filtered set). Badge border turns gold in view mode. Labels renamed to 'In Inv' and 'To Make'." },
+                { label:"Flavor breakdown redesign", note:"Flavor table now shows Reg Box, Reg Dates, Grand Box, Grand Dates, Total Dates as separate columns. Title updated to 'Gourmet — Flavor Breakdown / Boxes + Dates per Flavor'. Print updated to match." },
+                { label:"Print improvements", note:"Added time to print header. All text bold for thermal printer. Column headers shortened. Each collection wrapped in no-split block so it won't break across pages." },
+                { label:"Tooltip: In View toggle", note:"Click any SKU badge to toggle between Global (all orders) and In View (current filter). Border turns gold in view mode. Labels renamed to 'In Inv' and 'To Make'." },
                 { label:"Styling & badge fixes", note:"Removed 'Short by' from tooltip. Missing items in partial and hold orders now show red border + strikethrough while keeping their collection color." },
                 { label:"Shopify live orders", note:"Added direct Shopify API fetch via Vercel serverless proxy. Orders load live with a Refresh button. CSV upload kept as fallback. Header shows source + fetch timestamp." },
-                { label:"Quick view weights + active state", note:"Weight values from the Weights tab appear on preset filter buttons. Active filter button now shows amber fill. Fixed active state detection by stripping IDs from clause comparison." },
               ].map((item, i) => (
                 <div key={i} style={{
                   background:"rgba(255,255,255,0.04)", borderRadius:"8px",
