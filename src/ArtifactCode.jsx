@@ -1362,11 +1362,46 @@ function PrepPlanTab({ orders, inventory, csvLoaded, csvFilename, datesReg, setD
     if (shouldShow("flavor") && plan.flavorSummary.length > 0) {
       let fr = "";
       plan.flavorSummary.forEach(f => {
-        fr += `<tr><td><b>${f.name}</b></td><td class="right tomake">${f.regToMake||"—"}</td><td class="right dates">${f.regDates||"—"}</td><td class="right tomake">${f.grandToMake||"—"}</td><td class="right dates">${f.grandDates||"—"}</td><td class="right dates"><b>${f.regDates+f.grandDates}</b></td></tr>`;
+        fr += `<tr>
+          <td>${f.name}</td>
+          <td class="right div-left">${f.regToMake||"—"}</td>
+          <td class="right">${f.grandToMake||"—"}</td>
+          <td class="right div-left">${f.regDates||"—"}</td>
+          <td class="right">${f.grandDates||"—"}</td>
+          <td class="right div-left"><b>${f.regDates+f.grandDates}</b></td>
+        </tr>`;
       });
       const tR=plan.flavorSummary.reduce((s,f)=>s+f.regToMake,0), tRD=plan.flavorSummary.reduce((s,f)=>s+f.regDates,0), tG=plan.flavorSummary.reduce((s,f)=>s+f.grandToMake,0), tGD=plan.flavorSummary.reduce((s,f)=>s+f.grandDates,0);
-      fr += `<tr class="grand-total-row"><td><b>Total</b></td><td class="right">${tR}</td><td class="right">${tRD}</td><td class="right">${tG}</td><td class="right">${tGD}</td><td class="right dates">${tRD+tGD}</td></tr>`;
-      flavorHTML = `<div class="section-block"><div style="font-size:8pt;font-weight:bold;border-bottom:1pt solid #ccc;padding-bottom:2pt;margin-bottom:3pt;margin-top:6pt;">Gourmet — Flavor Breakdown</div><table><thead><tr>${th("Flavor")}${th("Reg Bx",true)}${th("Reg Dt",true)}${th("Grd Bx",true)}${th("Grd Dt",true)}${th("Tot Dt",true)}</tr></thead><tbody>${fr}</tbody></table></div>`;
+      fr += `<tr class="grand-total-row">
+        <td><b>Total</b></td>
+        <td class="right div-left">${tR}</td>
+        <td class="right">${tG}</td>
+        <td class="right div-left">${tRD}</td>
+        <td class="right">${tGD}</td>
+        <td class="right div-left">${tRD+tGD}</td>
+      </tr>`;
+      flavorHTML = `<div class="section-block" style="margin-top:8pt;">
+        <div style="font-size:8pt;font-weight:bold;margin-bottom:3pt;">Gourmet — Flavor Breakdown</div>
+        <table class="flavor-table">
+          <thead>
+            <tr class="group-row">
+              <th></th>
+              <th colspan="2" class="group-header div-left">BOX</th>
+              <th colspan="2" class="group-header div-left">DATES</th>
+              <th class="group-header div-left">DATES</th>
+            </tr>
+            <tr>
+              <th style="text-align:left">Flavor</th>
+              <th class="right div-left">Reg</th>
+              <th class="right">Grand</th>
+              <th class="right div-left">Reg</th>
+              <th class="right">Grand</th>
+              <th class="right div-left">Total</th>
+            </tr>
+          </thead>
+          <tbody>${fr}</tbody>
+        </table>
+      </div>`;
     }
 
     const html = `<div style="font-family:'Courier New',monospace;">
@@ -1587,18 +1622,38 @@ function PrepPlanTab({ orders, inventory, csvLoaded, csvFilename, datesReg, setD
           #prep-print-portal tr { page-break-inside: avoid; break-inside: avoid; }
           #prep-print-portal thead { display: table-header-group; }
           #prep-print-portal .section-block { page-break-inside: avoid; break-inside: avoid; margin-bottom: 4pt; }
+          #prep-print-portal .flavor-table { width: 100%; border-collapse: collapse; font-size: 9pt; font-family: 'Courier New', monospace; }
+          #prep-print-portal .flavor-table th { background: #f2f2f2 !important; font-size: 6.5pt; padding: 2pt 6pt; border: 1px solid #ccc; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          #prep-print-portal .flavor-table td { padding: 2pt 6pt; border-bottom: 1px solid #e0e0e0; font-size: 8.5pt; font-weight: bold; }
+          #prep-print-portal .flavor-table .group-row th { text-align: center; font-size: 6pt; letter-spacing: 0.05em; border-bottom: none; padding-bottom: 0; }
+          #prep-print-portal .flavor-table .group-header { text-align: center; }
+          #prep-print-portal .flavor-table .div-left { border-left: 2px solid #111 !important; }
+          #prep-print-portal .flavor-table tr.grand-total-row td { background: #000 !important; color: #fff !important; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          #prep-print-portal .flavor-table .right { text-align: right; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         #prep-print-portal { display: none; }
       `}</style>
 
       {/* Screen-only header — hidden in print */}
-      <div className="no-print" style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:"14px",flexWrap:"wrap",gap:"10px"}}>
-        <div>
-          <h2 style={{margin:"0 0 2px",fontSize:"18px",fontWeight:700,color:"#292524",fontFamily:"'DM Mono',monospace"}}>{today}</h2>
-          <div style={{fontSize:"11px",color:"#78716C"}}>{csvFilename} · {orders.length} unfulfilled orders</div>
+      <div className="no-print" style={{marginBottom:"14px"}}>
+        {/* Top row: date + print buttons */}
+        <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:"8px",marginBottom:"10px"}}>
+          <div>
+            <h2 style={{margin:"0 0 2px",fontSize:"18px",fontWeight:700,color:"#292524",fontFamily:"'DM Mono',monospace"}}>{today}</h2>
+            <div style={{fontSize:"11px",color:"#78716C"}}>{csvFilename} · {orders.length} unfulfilled orders</div>
+          </div>
+          <div style={{display:"flex",gap:"6px",flexShrink:0}}>
+            <button onClick={()=>setShowPrintPanel(s=>!s)} style={{background:showPrintPanel?"#1C1917":"#F3F4F6",color:showPrintPanel?"#F5EFE3":"#374151",border:"1px solid #E5E7EB",borderRadius:"8px",padding:"7px 13px",fontSize:"12px",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>
+              🖨 Print Setup
+            </button>
+            <button onClick={doPrint} style={{background:"#1C1917",color:"#C9A84C",border:"1px solid #C9A84C",borderRadius:"8px",padding:"7px 13px",fontSize:"12px",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
+              Print
+            </button>
+          </div>
         </div>
 
+        {/* Second row: dates config + reset + width */}
         <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
           {/* Dates config */}
           <div style={{display:"flex",alignItems:"center",gap:"10px",background:"#fff",border:"1.5px solid #FDE68A",borderRadius:"10px",padding:"7px 12px",flexWrap:"wrap"}}>
@@ -1617,23 +1672,16 @@ function PrepPlanTab({ orders, inventory, csvLoaded, csvFilename, datesReg, setD
             ↔ Reset Cols
           </button>
 
-          {/* Table width slider */}
+          {/* Table width slider — hidden on small screens */}
           <div style={{display:"flex",alignItems:"center",gap:"7px",background:"#fff",border:"1.5px solid #E7E5E4",borderRadius:"10px",padding:"6px 12px"}}>
             <span style={{fontSize:"10px",fontWeight:700,color:"#78716C",textTransform:"uppercase",letterSpacing:"0.05em",whiteSpace:"nowrap"}}>↔ Width</span>
             <input type="range" min="40" max="100" value={tableWidth} onChange={e=>setTableWidth(Number(e.target.value))}
-              style={{width:"90px",accentColor:"#C9A84C",cursor:"pointer"}}/>
+              style={{width:"80px",accentColor:"#C9A84C",cursor:"pointer"}}/>
             <span style={{fontSize:"11px",fontWeight:700,color:"#44403C",fontFamily:"'DM Mono',monospace",minWidth:"30px"}}>{tableWidth}%</span>
             {tableWidth !== 100 && (
               <button onClick={()=>setTableWidth(100)} style={{background:"none",border:"none",color:"#A8A29E",cursor:"pointer",fontSize:"11px",padding:"0",fontWeight:600}}>↺</button>
             )}
           </div>
-          {/* Print controls */}
-          <button onClick={()=>setShowPrintPanel(s=>!s)} style={{background:showPrintPanel?"#1C1917":"#F3F4F6",color:showPrintPanel?"#F5EFE3":"#374151",border:"1px solid #E5E7EB",borderRadius:"8px",padding:"7px 13px",fontSize:"12px",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>
-            🖨 Print Setup
-          </button>
-          <button onClick={doPrint} style={{background:"#1C1917",color:"#C9A84C",border:"1px solid #C9A84C",borderRadius:"8px",padding:"7px 13px",fontSize:"12px",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>
-            Print
-          </button>
         </div>
       </div>
 
@@ -1668,7 +1716,7 @@ function PrepPlanTab({ orders, inventory, csvLoaded, csvFilename, datesReg, setD
       )}
 
       {/* Printable area */}
-      <div id="prep-printable" style={{width:`${tableWidth}%`,transition:"width 0.15s",margin:"0 auto"}}>
+      <div id="prep-printable" style={{width:`${tableWidth}%`,transition:"width 0.15s",margin:"0 auto",minWidth:0}}>
         {/* Print-only header */}
         <div style={{display:"none"}} className="print-header">
           <div style={{fontSize:"11px",fontWeight:700,marginBottom:"4px",fontFamily:"monospace"}}>Sahara Delights — Prep Plan · {today}</div>
@@ -1676,7 +1724,7 @@ function PrepPlanTab({ orders, inventory, csvLoaded, csvFilename, datesReg, setD
         <style>{`@media print { .print-header { display: block !important; margin-bottom: 4px; } }`}</style>
 
         {/* Main table */}
-        <div style={{background:"#fff",border:"1.5px solid #ccc",borderRadius:"6px",overflow:"hidden",marginBottom:"12px"}}>
+        <div style={{background:"#fff",border:"1.5px solid #ccc",borderRadius:"6px",overflow:"auto",marginBottom:"12px",WebkitOverflowScrolling:"touch"}}>
           {renderTable()}
         </div>
 
@@ -1692,14 +1740,15 @@ function PrepPlanTab({ orders, inventory, csvLoaded, csvFilename, datesReg, setD
           const tGD = plan.flavorSummary.reduce((s,f)=>s+f.grandDates,0);
           return (
           <div style={{display:"flex",justifyContent:"center",marginBottom:"12px"}}>
-            <div style={{display:"inline-block", background:"#fff", border:"1.5px solid #ccc", borderRadius:"6px", overflow:"hidden"}}>
+            <div style={{display:"inline-block", background:"#fff", border:"1.5px solid #ccc", borderRadius:"6px", overflow:"hidden", maxWidth:"100%"}}>
               {/* Title bar */}
               <div style={{background:"#F0F0F0",borderBottom:"1px solid #ccc",padding:"7px 12px",display:"flex",alignItems:"center",gap:"8px"}}>
                 <div style={{width:"7px",height:"7px",borderRadius:"50%",background:"#333",flexShrink:0}}/>
                 <span style={{fontSize:"11px",fontWeight:700,color:"#111",letterSpacing:"0.07em",textTransform:"uppercase"}}>Gourmet — Flavor Breakdown</span>
                 <span style={{fontSize:"10px",color:"#888"}}>Boxes + Dates / Flavor</span>
               </div>
-              <table style={{borderCollapse:"collapse", tableLayout:"auto"}}>
+              <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+              <table style={{borderCollapse:"collapse",tableLayout:"auto"}}>
                 <thead>
                   {/* Group row */}
                   <tr style={{background:"#F8F8F8"}}>
@@ -1740,6 +1789,7 @@ function PrepPlanTab({ orders, inventory, csvLoaded, csvFilename, datesReg, setD
                   </tr>
                 </tbody>
               </table>
+              </div>{/* end scroll wrapper */}
             </div>
           </div>
           );
@@ -2787,10 +2837,10 @@ export default function App() {
               <div style={{fontSize:"13px",fontWeight:600,color:"#57534E"}}>All Products</div>
               <button onClick={()=>setInventory(ZERO_INVENTORY)} style={{background:"#FEF2F2",color:"#DC2626",border:"1px solid #FECACA",borderRadius:"6px",padding:"5px 12px",fontSize:"11px",cursor:"pointer",fontWeight:600}}>Reset All to 0</button>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 180px 180px",gap:"0 12px",padding:"5px 16px",marginBottom:"4px"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:"0 8px",padding:"5px 16px",marginBottom:"4px"}}>
               <div style={{fontSize:"10px",color:"#A8A29E",fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase"}}>Product</div>
-              <div style={{fontSize:"10px",color:"#A8A29E",fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",textAlign:"center"}}>Regular</div>
-              <div style={{fontSize:"10px",color:"#A8A29E",fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",textAlign:"center"}}>Grand</div>
+              <div style={{fontSize:"10px",color:"#A8A29E",fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",textAlign:"center",minWidth:"80px"}}>Reg</div>
+              <div style={{fontSize:"10px",color:"#A8A29E",fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase",textAlign:"center",minWidth:"80px"}}>Grand</div>
             </div>
             {COLLECTION_GROUPS.map(group=>{
               const col=COLLECTION_COLORS[group.prefix];
@@ -2810,7 +2860,7 @@ export default function App() {
                     const regDeficit = csvLoaded ? (inventory[regSku]||0) - (skuOrdered[regSku]||0) : null;
                     const grandDeficit = csvLoaded && grandSku ? (inventory[grandSku]||0) - (skuOrdered[grandSku]||0) : null;
                     return (
-                      <div key={name} style={{display:"grid",gridTemplateColumns:"1fr 180px 180px",gap:"0 12px",padding:"10px 16px",alignItems:"center",background:rowActive?col.light:"transparent",borderBottom:pi<group.pairs.length-1?`1px solid ${col.muted||"#F5F5F4"}`:"none"}}>
+                      <div key={name} style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:"0 8px",padding:"10px 16px",alignItems:"center",background:rowActive?col.light:"transparent",borderBottom:pi<group.pairs.length-1?`1px solid ${col.muted||"#F5F5F4"}`:"none"}}>
                         <div>
                           <div style={{fontSize:"13px",fontWeight:rowActive?700:500,color:rowActive?col.text:"#57534E"}}>{name}</div>
                           {csvLoaded&&rowActive&&<div style={{fontSize:"9px",color:col.accent,fontWeight:600,marginTop:"1px"}}>in orders</div>}
@@ -2872,11 +2922,11 @@ export default function App() {
             </div>
             <div style={{display:"flex", flexDirection:"column", gap:"10px"}}>
               {[
-                { label:"Flavor breakdown redesign", note:"Flavor table now shows Reg Box, Reg Dates, Grand Box, Grand Dates, Total Dates as separate columns. Title updated to 'Gourmet — Flavor Breakdown / Boxes + Dates per Flavor'. Print updated to match." },
-                { label:"Print improvements", note:"Added time to print header. All text bold for thermal printer. Column headers shortened. Each collection wrapped in no-split block so it won't break across pages." },
+                { label:"Print flavor table redesign", note:"Print flavor breakdown now matches the screen UI — grouped BOX/DATES headers with vertical dividers, same column order (Reg Bx, Grd Bx | Reg Dt, Grd Dt | Total Dt). Date + timestamp on one line." },
+                { label:"Mobile layout improvements", note:"Inventory tab columns now shrink to fit screen (no more 180px fixed widths). Prep plan controls stack into two rows. Table and flavor breakdown scroll horizontally on mobile." },
+                { label:"Flavor breakdown redesign", note:"Flavor table shows Reg Box, Grand Box | Reg Dates, Grand Dates | Total Dates with group headers and vertical dividers. Data model split regDates and grandDates separately." },
                 { label:"Tooltip: In View toggle", note:"Click any SKU badge to toggle between Global (all orders) and In View (current filter). Border turns gold in view mode. Labels renamed to 'In Inv' and 'To Make'." },
-                { label:"Styling & badge fixes", note:"Removed 'Short by' from tooltip. Missing items in partial and hold orders now show red border + strikethrough while keeping their collection color." },
-                { label:"Shopify live orders", note:"Added direct Shopify API fetch via Vercel serverless proxy. Orders load live with a Refresh button. CSV upload kept as fallback. Header shows source + fetch timestamp." },
+                { label:"Styling & badge fixes", note:"Removed 'Short by' from tooltip. Missing items in partial and hold orders show red border + strikethrough while keeping their collection color." },
               ].map((item, i) => (
                 <div key={i} style={{
                   background:"rgba(255,255,255,0.04)", borderRadius:"8px",
